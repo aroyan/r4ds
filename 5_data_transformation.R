@@ -110,7 +110,7 @@ tail(arrange(flights, desc(dep_delay)))
 df <- tibble(x = c(5, 2, NA))
 arrange(df, desc(x))
 
-### Exercises ==================================================================
+### Exercises ------------------------------------------------------------------
 
 # 1
 ## How could you use arrange() to sort all missing values to the start?
@@ -124,3 +124,174 @@ tail(na_values_in_head)
 
 most_delayed <- arrange(flights, desc(dep_delay))
 head(most_delayed)
+earliest_departure <- arrange(flights, dep_time)
+head(earliest_departure)
+tail(filter(earliest_departure, !is.na(dep_time)))
+
+# 3
+## Sort flights to find the fastest (highest speed) flights.
+
+fastest <- arrange(flights, (air_time/60) / distance )
+View(tail(filter(fastest, !is.na(air_time))))
+
+# 4
+## Which flights traveled the farthest? Which traveled the shortest?
+
+farthest <- arrange(flights, desc(distance))
+this_is_fastest <- head(farthest, 1)
+
+shortest <- head(arrange(flights, distance), 1)
+
+## Select ======================================================================
+
+# Select cols with col name explicitly
+select(flights, year, month, day)
+
+# Select cols year to day
+select(flights, year:day)
+
+# Select all cols exclude year to day
+colnames(select(flights, -(year:day)))
+
+?select
+
+rename(flights, hari = day)
+
+# Rearrange cols using everything() function
+select(flights, time_hour, air_time, everything())
+
+### Exercises ------------------------------------------------------------------
+
+# 1
+## Brainstorm as many ways as possible to select dep_time, dep_delay, arr_time,
+## and arr_delay from flights.
+
+select_challenge_one <- select(flights, dep_time, dep_delay, arr_time, arr_delay)
+head(select_challenge_one)
+
+# 2
+## What happens if you include the name of a variable multiple times in a select() call?
+
+head(select(flights, day, day))
+
+## Show only once still, doesn't duplicate
+
+# 3
+## What does the any_of() function do? Why might it be helpful in conjunction with this vector?
+
+vars <- c("year", "month", "day", "dep_delay", "arr_delay")
+head(select(flights, any_of(vars)))
+
+## So it's kinda same like filter using %in% operator
+
+# 4
+## Does the result of running the following code surprise you?
+## How do the select helpers deal with case by default?
+## How can you change that default?
+
+# This is case insensitive 
+head(select(flights, contains("TiMe")))
+
+# This is case sensitive
+head(select(flights, contains("TIME", ignore.case = FALSE)))
+
+## Add new variables / Mutation ================================================
+
+flights_sml <- select(flights, 
+                      year:day, 
+                      ends_with("delay"), 
+                      distance, 
+                      air_time
+)
+
+View(flights_sml)
+
+mutate(flights_sml, gain = dep_delay - arr_delay,
+       speed = distance / air_time * 60)
+
+View(flights_sml)
+
+mutate(flights_sml,
+       gain = dep_delay - arr_delay,
+       hours = air_time / 60,
+       gain_per_hour = gain / hours
+)
+
+# Only keep new created variables
+transmute(flights,
+          gain = dep_delay - arr_delay,
+          hours = air_time / 60,
+          gain_per_hour = gain / hours
+)
+
+# %/% (integer division)
+# %% (remainder)
+transmute(flights,
+          dep_time,
+          hour = dep_time %/% 100,
+          minute = dep_time %% 100
+)
+
+(x <- 1:10)
+lag(x)
+lead(x)
+
+x
+
+cumsum(x)
+cummean(x)
+
+y <- c(1, 2, 2, NA, 3, 4)
+min_rank(y)
+min_rank(desc(y))
+
+row_number(y)
+dense_rank(y)
+percent_rank(y)
+cume_dist(y)
+
+### Exercises ------------------------------------------------------------------
+
+# 1
+## Currently dep_time and sched_dep_time are convenient to look at,
+## but hard to compute with because they’re not really continuous numbers. 
+## Convert them to a more convenient representation of number of minutes since midnight
+
+new_flights <- select(flights, dep_time, sched_dep_time)
+mutate(new_flights, dep_time_minutes = dep_time %/% 100 * 60 + dep_time %% 100,
+       sched_dep_time_in_minutes = sched_dep_time %/% 100 * 60 + sched_dep_time %% 100)
+
+# 2
+## Compare air_time with arr_time - dep_time. What do you expect to see?
+## What do you see? What do you need to do to fix it?
+
+flights %>% 
+  select(air_time, arr_time, dep_time) %>% 
+  mutate(actual_time = arr_time - dep_time)
+
+## Well, you have to convert time format to minutes before
+## calculating that arr time and dep time
+
+convert_time_to_minutes_from_midnight <- function(your_time){
+  x <- your_time %/% 100 * 60 + your_time %% 100
+  return(x)
+}
+
+flights %>% 
+  select(air_time, arr_time, dep_time) %>% 
+  mutate(actual_time = convert_time_to_minutes_from_midnight(arr_time) -
+           convert_time_to_minutes_from_midnight(dep_time))
+
+# 3
+## Compare dep_time, sched_dep_time, and dep_delay.
+## How would you expect those three numbers to be related?
+
+flights %>% 
+  select(dep_time, sched_dep_time, dep_delay)
+
+# You will get dep delay value by subtracting dep time and sched dep time
+
+# 4
+## Find the 10 most delayed flights using a ranking function.
+## How do you want to handle ties? Carefully read the documentation for min_rank().
+
